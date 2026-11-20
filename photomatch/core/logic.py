@@ -36,7 +36,7 @@ class PhotoInfo:
 
 @dataclass
 class MatchResult:
-    """Una foto del cestino NAS confrontata con la controparte su pCloud."""
+    """Un file delle cartelle A confrontato con l'eventuale controparte in B."""
 
     nas_photo: PhotoInfo
     pcloud_photo: Optional[PhotoInfo]
@@ -48,7 +48,7 @@ class MatchResult:
             "exact": "Identica (nome + dimensione + data EXIF)",
             "name_size": "Nome e dimensione uguali, data EXIF diversa/assente",
             "candidate": "Stesso nome, dimensione diversa",
-            "unique": "Non presente su pCloud",
+            "unique": "Non presente nelle cartelle B",
         }.get(self.match_level, self.match_level)
 
 
@@ -156,7 +156,7 @@ def _by_name(photos: Iterable[PhotoInfo]) -> dict[str, list[PhotoInfo]]:
 
 def compare(nas_photos: list[PhotoInfo], pcloud_photos: list[PhotoInfo],
             size_tolerance: int = 0) -> list[MatchResult]:
-    """Confronta le foto del cestino NAS con quelle su pCloud.
+    """Confronta i file delle cartelle A con quelli delle cartelle B.
 
     Livelli:
       - exact: nome + dimensione (+/- tolleranza) + data EXIF identica

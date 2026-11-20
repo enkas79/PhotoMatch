@@ -31,12 +31,12 @@ class ReportRow:
 
 
 def _to_path(raw: str) -> Path:
-    """Converte 'C:\\\\a\\\\b.jpg' o '/nas/a/b.jpg' in Path confrontabile."""
+    """Converte 'C:\\\\a\\\\b.jpg' o '/a/b.jpg' in Path confrontabile."""
     return Path(PureWindowsPath(os.path.normpath(raw))) if "\\" in raw else Path(raw)
 
 
 def parse_report(csv_path: Path) -> list[ReportRow]:
-    """Legge il CSV del report e restituisce le righe con percorsi NAS validi."""
+    """Legge il CSV del report e restituisce le righe con percorso A valido."""
     rows: list[ReportRow] = []
     with open(csv_path, newline="", encoding="utf-8-sig") as handle:
         for raw in csv.DictReader(handle):
@@ -56,7 +56,7 @@ def parse_report(csv_path: Path) -> list[ReportRow]:
 
 
 def common_root(paths: list[Path]) -> Optional[Path]:
-    """Radice comune dei percorsi NAS del report (server per ricostruire l'albero)."""
+    """Radice comune dei percorsi A del report (serve per ricostruire l'albero)."""
     if not paths:
         return None
     parts = [list(p.parts) for p in paths]
@@ -74,7 +74,7 @@ def common_root(paths: list[Path]) -> Optional[Path]:
 def plan_rescue(rows: list[ReportRow], include_candidates: bool = False) -> list[tuple[Path, Path, int]]:
     """Copia da pianificare: coppie (origine, destinazione relativa, dimensione).
 
-    L'albero di destinazione preserva la struttura del report sotto la radice NAS.
+    L'albero di destinazione preserva la struttura del report sotto la radice A.
     I 'candidate' finiscono nella sottocartella riservata _da_verificare.
     """
     selected = [row for row in rows if row.is_unique or (include_candidates and row.is_candidate)]
@@ -118,7 +118,7 @@ class RescueStats:
     def summary(self) -> str:
         return (
             f"Copiati: {self.copied} | Gia' presenti: {self.skipped} | "
-            f"Non trovati sul NAS: {self.missing} | Errori: {len(self.errors)}"
+            f"Non trovati in A: {self.missing} | Errori: {len(self.errors)}"
         )
 
 

@@ -5,11 +5,11 @@
 2. [Requisiti](#2-requisiti)
 3. [Installazione](#3-installazione)
 4. [Primo avvio](#4-primo-avvio)
-5. [Scegliere le cartelle](#5-scegliere-le-cartelle)
+5. [Scegliere le cartelle A e B](#5-scegliere-le-cartelle-a-e-b)
 6. [Opzioni di confronto](#6-opzioni-di-confronto)
 7. [Leggere i risultati](#7-leggere-i-risultati)
 8. [Esportare il report CSV](#8-esportare-il-report-csv)
-9. [Recuperare le foto dal report](#9-recuperare-le-foto-dal-report)
+9. [Copiare i file non presenti in B](#9-copiare-i-file-non-presenti-in-b)
 10. [Aggiornamenti](#10-aggiornamenti)
 11. [Privacy e sicurezza](#11-privacy-e-sicurezza)
 12. [Limiti noti](#12-limiti-noti)
@@ -19,16 +19,20 @@
 ---
 
 ## 1. Cosa fa PhotoMatch
-PhotoMatch confronta le foto presenti nel **cestino del NAS** (es. Ugreen) con quelle
-gia' salvate su **pCloud**, in base a:
+PhotoMatch confronta i file di **una o piu' cartelle A** con quelli di **una o piu'
+cartelle B**, in base a:
 
 - **nome del file**
 - **dimensione in byte**
-- **data di scatto EXIF** (opzionale)
+- **data di scatto EXIF** (opzionale, solo per le foto)
 
-Per ogni foto del cestino ottieni un esito e puoi esportare tutto in **CSV**.
-**Nessuna foto viene mai cancellata o spostata automaticamente**: PhotoMatch legge
-soltanto, e l'unico recupero possibile e' una copia *esplicita* che scegli tu.
+Per ogni file di A ottieni un esito e puoi esportare tutto in **CSV**.
+**Nessun file viene mai cancellato o spostato automaticamente**: PhotoMatch legge
+soltanto, e l'unica copia possibile e' quella *esplicita* che scegli tu.
+
+> **Caso d'uso tipico**: A = cestino del NAS (foto "da buttare"), B = backup su
+> pCloud. Prima di svuotare il cestino sai quali foto sono gia' al sicuro.
+> Ma funziona con qualsiasi cartella: locale, di rete (NAS), disco USB.
 
 ## 2. Requisiti
 - Windows 10/11, macOS 12+, oppure Linux (Debian/Ubuntu e derivate)
@@ -57,13 +61,14 @@ Richiede Python 3.11+.
 Al primo avvio compare un messaggio di benvenuto: la guida completa (questa pagina)
 si apre anche da menu **Aiuto > Guida** o con il tasto **F1**.
 
-## 5. Scegliere le cartelle
+## 5. Scegliere le cartelle A e B
 Nella sezione **Cartelle** puoi aggiungere **piu' cartelle per lato**:
 
-- **Cestino NAS**: una o piu' cartelle (es. `\\NAS\#recycle`, `D:\Cestino_2024`).
-  Ogni cartella viene scansionata **ricorsivamente**, incluidas le sottocartelle.
-- **pCloud**: una o piu' cartelle della tua libreria pCloud
-  (es. `P:\pCloud Drive\Foto`).
+- **Cartelle A**: le foto/file qui dentro vengono **elencati nei risultati**
+  (es. `\\NAS\#recycle`, `D:\Cestino_2024`)
+- **Cartelle B**: il **riferimento** del confronto (es. `P:\pCloud Drive\Foto`)
+
+Ogni cartella viene scansionata **ricorsivamente**, incluse le sottocartelle.
 
 Comandi disponibili per ogni lista:
 - **Aggiungi...**: scegli una cartella dal selettore (puoi aprirlo piu' volte)
@@ -71,34 +76,34 @@ Comandi disponibili per ogni lista:
 - **Svuota**: svuota tutta la lista
 
 Le liste vengono **ricordate** tra un avvio e l'altro. Se una cartella non e'
-raggiungibile (NAS offline, disco scollegato), PhotoMatch lo segnala e la salta,
-proseguendo con le altre. Se due cartelle si sovrappongono, ogni foto viene
-contata **una sola volta**.
+raggiungibile (disco scollegato, NAS offline), PhotoMatch lo segnala e la salta,
+proseguendo con le altre. Se due cartelle si sovrappongono, ogni file viene
+contato **una sola volta**.
 
 Poi premi **Confronta**.
 
 ## 6. Opzioni di confronto
 - **Confronta data EXIF**: attivo di default. Legge la data di scatto dai metadati
-  della foto (piu' lento, ma distingue le foto con lo stesso nome e dimensione).
+  della foto (piu' lento, ma distingue i file con lo stesso nome e dimensione).
   Disattivalo per una scansione velocissima basata solo su nome e dimensione.
 - **Tolleranza dimensione (byte)**: differenza massima di dimensione ancora
-  considerata "uguale" (utile per foto ri-esportate con metadati diversi).
+  considerata "uguale" (utile per file ri-esportati con metadati diversi).
 
 ## 7. Leggere i risultati
-La tabella mostra una riga per ogni foto trovata nel cestino NAS:
+La tabella mostra una riga per ogni file trovato nelle cartelle A:
 
 | Colonna | Significato |
 |---|---|
-| File | Nome del file nel cestino NAS |
+| File | Nome del file in A |
 | Esito | Uno dei 4 livelli sotto |
-| EXIF NAS / EXIF pCloud | Data di scatto letta dai metadati |
-| Percorso NAS / Percorso pCloud | Percorsi completi dei due file |
+| EXIF A / EXIF B | Data di scatto letta dai metadati |
+| Percorso A / Percorso B | Percorsi completi dei due file |
 
 I 4 esiti possibili:
-- **Identica (nome + dimensione + data EXIF)**: la foto e' gia' su pCloud, stessa data
-- **Nome e dimensione uguali, data EXIF diversa/assente**: quasi certamente la stessa foto
+- **Identica (nome + dimensione + data EXIF)**: presente anche in B con stessa data
+- **Nome e dimensione uguali, data EXIF diversa/assente**: quasi certamente lo stesso file
 - **Candidata (stesso nome, dimensione diversa)**: da verificare a occhio
-- **Non presente su pCloud**: foto unica del cestino, da salvare se la vuoi tenere
+- **Non presente nelle cartelle B**: file unico di A, da salvare se lo vuoi tenere
 
 La barra di stato in basso resume il conteggio per esito.
 
@@ -106,14 +111,15 @@ La barra di stato in basso resume il conteggio per esito.
 Con **Esporta CSV** salvi la tabella in un file `.csv` (codifica UTF-8 con BOM,
 compatibile con Excel). Le colonne sono:
 `exif_nas, exif_pcloud, file, level, level_label, nas_path, pcloud_path, size_bytes`
+(i nomi colonna restano quelli storici per compatibilita' con i report gia' esportati).
 
-Il report e' il file che poi usi per il recupero (paragrafo successivo).
+Il report e' il file che poi usi per la copia selettiva (paragrafo successivo).
 
-## 9. Recuperare le foto dal report
-**Recupera foto da CSV...** legge un report esportato in precedenza e copia dal
-cestino NAS nella cartella di destinazione che scegli:
-- di default copia solo le foto **uniche** (non presenti su pCloud), mantenendo
-  la struttura delle sottocartelle
+## 9. Copiare i file non presenti in B
+**Recupera foto da CSV...** legge un report esportato in precedenza e copia dalle
+cartelle A nella cartella di destinazione che scegli:
+- di default copia solo i file **non presenti in B**, mantenendo la struttura
+  delle sottocartelle
 - spuntando **includi le 'candidate'**, copia anche le candidate in una
   sottocartella `_da_verificare`
 - i file gia' presenti nel destino non vengono sovrascritti
@@ -127,29 +133,28 @@ sono pubblicati nella pagina Releases del progetto.
 - Tutta la scansione avviene **in locale**: nessun file viene caricato da nessuna parte
 - L'unica connessione di rete e' il controllo aggiornamenti opzionale su GitHub
 - Nessuna cancellazione automatica: PhotoMatch puo' solo **leggere** e, su tua
-  richiesta esplicita, **copiare** file fuori dal cestino
+  richiesta esplicita, **copiare** file da A verso la destinazione scelta
 
 ## 12. Limiti noti
 - Il confronto si basa su nome + dimensione (+ EXIF): rinominare un file lo rende
-  "unico" o "candidato" anche se il contenuto e' identico
-- Foto con EXIF mancante o corrotto vengono confrontate solo per nome e dimensione
-- Formati supportati: jpg, jpeg, png, heic, heif, tif, tiff, bmp, gif, webp,
+  "non presente in B" o "candidato" anche se il contenuto e' identico
+- File con EXIF mancante o corrotto vengono confrontati solo per nome e dimensione
+- Formati foto supportati: jpg, jpeg, png, heic, heif, tif, tiff, bmp, gif, webp,
   cr2, nef, arw, dng, avif
 
 ## 13. Domande frequenti (FAQ)
-**D: PhotoMatch cancella le foto dal cestino?**
+**D: PhotoMatch cancella i file?**
 R: No. Non cancella mai nulla, automaticamente o meno.
 
-**D: Posso confrontare piu' cartelle NAS insieme?**
-R: Si, aggiungile tutte nella lista "Cestino NAS".
+**D: Posso confrontare piu' cartelle insieme?**
+R: Si, aggiungile tutte nella lista A (o in B).
 
-**D: Il NAS e' offline, cosa succede?**
-R: Le cartelle non raggiungibili vengono segnalate e saltate; il confronto
-procede con quelle disponibili.
+**D: Una cartella non e' raggiungibile, cosa succede?**
+R: Viene segnalata e saltata; il confronto procede con le cartelle disponibili.
 
-**D: Due foto con lo stesso nome in pCloud?**
-R: Viene scelta la migliore in base a dimensione ed EXIF; il percorso pCloud
-mostrato in tabella e' quello del match scelto.
+**D: Due file con lo stesso nome in B?**
+R: Viene scelto il migliore in base a dimensione ed EXIF; il percorso B mostrato
+in tabella e' quello del match scelto.
 
 **D: Come faccio una build locale dell'installer?**
 R: Vedi il paragrafo [Sviluppo e build](#14-sviluppo-e-build).

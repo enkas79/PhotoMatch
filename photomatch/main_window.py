@@ -31,7 +31,7 @@ class MainWindow(QMainWindow):
         self._rescue_thread: QThread | None = None
         self._rescue_worker = None
 
-        self.setWindowTitle("PhotoMatch - Cestino NAS vs pCloud")
+        self.setWindowTitle("PhotoMatch")
         self.resize(1000, 640)
 
         central = QWidget()
@@ -51,19 +51,25 @@ class MainWindow(QMainWindow):
         columns = QHBoxLayout()
 
         self.nas_list = QListWidget()
-        self.nas_list.setToolTip("Cartelle del cestino NAS da confrontare (scansione ricorsiva)")
+        self.nas_list.setToolTip(
+            "Cartelle A: le foto qui dentro vengono elencate nei risultati "
+            "(es. cestino NAS). Scansione ricorsiva."
+        )
         for folder in self.config.nas_folders:
             self.nas_list.addItem(folder)
         columns.addLayout(self._folder_column(
-            "Cestino NAS:", self.nas_list, self._add_nas, self._remove_nas, self._clear_nas,
+            "Cartelle A:", self.nas_list, self._add_nas, self._remove_nas, self._clear_nas,
         ))
 
         self.pcloud_list = QListWidget()
-        self.pcloud_list.setToolTip("Cartelle pCloud da confrontare (scansione ricorsiva)")
+        self.pcloud_list.setToolTip(
+            "Cartelle B: riferimento del confronto (es. backup pCloud). "
+            "Scansione ricorsiva."
+        )
         for folder in self.config.pcloud_folders:
             self.pcloud_list.addItem(folder)
         columns.addLayout(self._folder_column(
-            "pCloud:", self.pcloud_list, self._add_pcloud, self._remove_pcloud, self._clear_pcloud,
+            "Cartelle B:", self.pcloud_list, self._add_pcloud, self._remove_pcloud, self._clear_pcloud,
         ))
 
         action_row = QHBoxLayout()
@@ -132,7 +138,7 @@ class MainWindow(QMainWindow):
     def _build_results_table(self) -> QTableWidget:
         self.table = QTableWidget(0, 6)
         self.table.setHorizontalHeaderLabels(
-            ["File", "Esito", "EXIF NAS", "EXIF pCloud", "Percorso NAS", "Percorso pCloud"]
+            ["File", "Esito", "EXIF A", "EXIF B", "Percorso A", "Percorso B"]
         )
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
@@ -178,7 +184,7 @@ class MainWindow(QMainWindow):
 
     def _add_nas(self) -> None:
         folder = QFileDialog.getExistingDirectory(
-            self, "Aggiungi cartella cestino NAS", self.config.last_nas_dir
+            self, "Aggiungi cartella A", self.config.last_nas_dir
         )
         if folder:
             self.config.last_nas_dir = str(Path(folder).parent)
@@ -187,7 +193,7 @@ class MainWindow(QMainWindow):
 
     def _add_pcloud(self) -> None:
         folder = QFileDialog.getExistingDirectory(
-            self, "Aggiungi cartella foto pCloud", self.config.last_pcloud_dir
+            self, "Aggiungi cartella B", self.config.last_pcloud_dir
         )
         if folder:
             self.config.last_pcloud_dir = str(Path(folder).parent)
@@ -220,10 +226,10 @@ class MainWindow(QMainWindow):
         nas_valid = [p for p in nas_folders if p.is_dir()]
         pcloud_valid = [p for p in pcloud_folders if p.is_dir()]
         if not nas_valid:
-            QMessageBox.warning(self, "PhotoMatch", "Aggiungi almeno una cartella cestino NAS valida.")
+            QMessageBox.warning(self, "PhotoMatch", "Aggiungi almeno una cartella A valida.")
             return
         if not pcloud_valid:
-            QMessageBox.warning(self, "PhotoMatch", "Aggiungi almeno una cartella pCloud valida.")
+            QMessageBox.warning(self, "PhotoMatch", "Aggiungi almeno una cartella B valida.")
             return
         missing = [str(p) for p in nas_folders + pcloud_folders if not p.is_dir()]
         if missing:
@@ -251,7 +257,7 @@ class MainWindow(QMainWindow):
         self._thread.start()
 
     def _on_progress(self, phase: int, count: int, name: str) -> None:
-        source = "NAS" if phase == 0 else "pCloud"
+        source = "A" if phase == 0 else "B"
         self.progress_label.setText(f"Scansione {source}: {count} foto (ultimo: {name})")
 
     def _on_finished(self, rows: list[dict[str, object]]) -> None:
@@ -274,7 +280,7 @@ class MainWindow(QMainWindow):
                 self.table.setItem(row_index, column, item)
         self.progress.hide()
         self.progress_label.setText(
-            f"{len(rows)} foto nel cestino | "
+            f"{len(rows)} foto in A | "
             f"identiche: {counts['exact']} | nome+dim: {counts['name_size']} | "
             f"candidati: {counts['candidate']} | uniche: {counts['unique']}"
         )
@@ -427,8 +433,8 @@ class MainWindow(QMainWindow):
         QMessageBox.about(
             self, "PhotoMatch",
             f"PhotoMatch {__version__}\n\n"
-            "Confronta le foto del cestino del NAS con quelle presenti su pCloud "
-            "in base a nome file, dimensione e data EXIF.\n\nEnrico Martini (c) 2026",
+            "Confronta le foto di due insiemi di cartelle (A vs B) in base a "
+            "nome file, dimensione e data EXIF.\nCaso d'uso tipico: cestino NAS vs backup pCloud.\n\nEnrico Martini (c) 2026",
         )
 
     # --- Geometria --------------------------------------------------------------

@@ -12,7 +12,7 @@ from photomatch.core.rescue import (
 
 
 class RescueWorker(QObject):
-    """Recupera le foto uniche (e opzionalmente le candidate) dal cestino NAS."""
+    """Recupera i file unici (e opzionalmente le candidate) dalle cartelle A."""
 
     progress = pyqtSignal(int, int, str)  # copiati, totali, nome file
     finished_ok = pyqtSignal(object)  # RescueStats

@@ -10,9 +10,9 @@ from photomatch.core.logic import compare, make_report, scan_photos_multi
 
 
 class ScanWorker(QObject):
-    """Scansiona le cartelle NAS e pCloud in un thread separato e confronta."""
+    """Scansiona le cartelle A e B in un thread separato e confronta."""
 
-    progress = pyqtSignal(int, int, str)  # scansione (0 NAS, 1 pCloud), file letti, nome file
+    progress = pyqtSignal(int, int, str)  # scansione (0 A, 1 B), file letti, nome file
     finished_ok = pyqtSignal(list)  # righe report
     failed = pyqtSignal(str)
 

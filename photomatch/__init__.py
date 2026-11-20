@@ -1,6 +1,6 @@
-"""PhotoMatch: confronta le foto nel cestino del NAS con quelle su pCloud.
+"""PhotoMatch: confronta i file di due insiemi di cartelle (A vs B).
 
-Pacchetto principale.
+Confronto per nome, dimensione ed EXIF. Pacchetto principale.
 """
 
 __version__ = "0.3.0"

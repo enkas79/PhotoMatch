@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=PhotoMatch
-Comment=Confronta le foto del cestino NAS con pCloud (nome, dimensione, EXIF)
+Comment=Confronta foto tra due insiemi di cartelle (nome, dimensione, EXIF)
 Exec=photomatch
 Terminal=false
 Type=Application
