@@ -87,6 +87,8 @@ def scan_photos(root: Path, recursive: bool = True,
     Non alza mai: gli errori di lettura singolo file vengono ignorati.
     """
     photos: list[PhotoInfo] = []
+    if not root.is_dir():
+        return photos
     iterator: Iterable[Path] = (
         root.rglob("*") if recursive else root.glob("*")
     )
@@ -106,6 +108,34 @@ def scan_photos(root: Path, recursive: bool = True,
         )
         if progress and count % 25 == 0:
             progress(count, item.name)
+    return photos
+
+
+MultiProgressCallback = Callable[[int, int, int, str], None]  # indice root, totale root, file letti, nome
+
+
+def scan_photos_multi(roots: Iterable[Path], recursive: bool = True,
+                      progress: Optional[MultiProgressCallback] = None,
+                      exif_enabled: bool = True) -> list[PhotoInfo]:
+    """Scandisce piu' cartelle e deduplica per percorso reale (root sovrapposte).
+
+    Le root non esistenti vengono saltate.
+    """
+    roots = list(roots)
+    photos: list[PhotoInfo] = []
+    seen: set[str] = set()
+    total = len(roots)
+    for index, root in enumerate(roots):
+        sub_progress = None
+        if progress:
+            sub_progress = lambda count, name, i=index, t=total: progress(i, t, count, name)
+        for photo in scan_photos(root, recursive=recursive, progress=sub_progress,
+                                 exif_enabled=exif_enabled):
+            key = os.path.realpath(photo.path)
+            if key in seen:
+                continue
+            seen.add(key)
+            photos.append(photo)
     return photos
 
 

@@ -8,8 +8,8 @@ from pathlib import Path
 from PyQt6.QtCore import Qt, QThread
 from PyQt6.QtGui import QAction, QCloseEvent
 from PyQt6.QtWidgets import (
-    QFileDialog, QHBoxLayout, QHeaderView, QLabel, QMainWindow, QMenu,
-    QMessageBox, QProgressBar, QPushButton, QStatusBar, QTableWidget,
+    QFileDialog, QHBoxLayout, QHeaderView, QLabel, QListWidget, QMainWindow,
+    QMenu, QMessageBox, QProgressBar, QPushButton, QStatusBar, QTableWidget,
     QTableWidgetItem, QVBoxLayout, QWidget, QCheckBox, QSpinBox, QGroupBox,
 )
 
@@ -43,23 +43,28 @@ class MainWindow(QMainWindow):
         self._build_menu()
         self._build_statusbar()
         self._restore_geometry()
+        self._first_run_hint()
 
     # --- UI -----------------------------------------------------------------
     def _build_folders_group(self) -> QGroupBox:
-        box = QGroupBox("Cartelle")
-        grid = QHBoxLayout()
-        grid.addWidget(QLabel("Cestino NAS:"))
-        self.nas_label = QLabel(self.config.nas_folder or "(non impostata)")
-        grid.addWidget(self.nas_label, stretch=1)
-        btn_nas = QPushButton("Scegli...")
-        btn_nas.clicked.connect(self._pick_nas)
-        grid.addWidget(btn_nas)
-        grid.addWidget(QLabel("pCloud:"))
-        self.pcloud_label = QLabel(self.config.pcloud_folder or "(non impostata)")
-        grid.addWidget(self.pcloud_label, stretch=1)
-        btn_pc = QPushButton("Scegli...")
-        btn_pc.clicked.connect(self._pick_pcloud)
-        grid.addWidget(btn_pc)
+        box = QGroupBox("Cartelle (aggiungi quante vuoi per lato)")
+        columns = QHBoxLayout()
+
+        self.nas_list = QListWidget()
+        self.nas_list.setToolTip("Cartelle del cestino NAS da confrontare (scansione ricorsiva)")
+        for folder in self.config.nas_folders:
+            self.nas_list.addItem(folder)
+        columns.addLayout(self._folder_column(
+            "Cestino NAS:", self.nas_list, self._add_nas, self._remove_nas, self._clear_nas,
+        ))
+
+        self.pcloud_list = QListWidget()
+        self.pcloud_list.setToolTip("Cartelle pCloud da confrontare (scansione ricorsiva)")
+        for folder in self.config.pcloud_folders:
+            self.pcloud_list.addItem(folder)
+        columns.addLayout(self._folder_column(
+            "pCloud:", self.pcloud_list, self._add_pcloud, self._remove_pcloud, self._clear_pcloud,
+        ))
 
         action_row = QHBoxLayout()
         self.scan_button = QPushButton("Confronta")
@@ -80,10 +85,28 @@ class MainWindow(QMainWindow):
         action_row.addWidget(self.rescue_candidates_check)
         action_row.addStretch(1)
         outer = QVBoxLayout()
-        outer.addLayout(grid)
+        outer.addLayout(columns)
         outer.addLayout(action_row)
         box.setLayout(outer)
         return box
+
+    def _folder_column(self, title: str, list_widget: QListWidget,
+                       on_add, on_remove, on_clear) -> QVBoxLayout:
+        col = QVBoxLayout()
+        col.addWidget(QLabel(title))
+        col.addWidget(list_widget, stretch=1)
+        buttons = QHBoxLayout()
+        btn_add = QPushButton("Aggiungi...")
+        btn_add.clicked.connect(on_add)
+        btn_remove = QPushButton("Rimuovi selezionata")
+        btn_remove.clicked.connect(on_remove)
+        btn_clear = QPushButton("Svuota")
+        btn_clear.clicked.connect(on_clear)
+        buttons.addWidget(btn_add)
+        buttons.addWidget(btn_remove)
+        buttons.addWidget(btn_clear)
+        col.addLayout(buttons)
+        return col
 
     def _build_options_group(self) -> QGroupBox:
         box = QGroupBox("Opzioni confronto")
@@ -124,6 +147,11 @@ class MainWindow(QMainWindow):
         file_menu.addAction(exit_action)
 
         help_menu: QMenu = menu_bar.addMenu("Aiuto")
+        guide_action = QAction("Guida (F1)", self)
+        guide_action.setShortcut("F1")
+        guide_action.triggered.connect(self._show_guide)
+        help_menu.addAction(guide_action)
+        help_menu.addSeparator()
         update_action = QAction("Controlla aggiornamenti", self)
         update_action.triggered.connect(self._check_updates)
         help_menu.addAction(update_action)
@@ -141,27 +169,68 @@ class MainWindow(QMainWindow):
         status.addPermanentWidget(self.progress)
 
     # --- Azioni ---------------------------------------------------------------
-    def _pick_nas(self) -> None:
-        folder = QFileDialog.getExistingDirectory(self, "Cartella cestino NAS")
-        if folder:
-            self.config.nas_folder = folder
-            self.nas_label.setText(folder)
+    def _folders_of(self, list_widget: QListWidget) -> list[str]:
+        return [list_widget.item(i).text() for i in range(list_widget.count())]
 
-    def _pick_pcloud(self) -> None:
-        folder = QFileDialog.getExistingDirectory(self, "Cartella foto pCloud")
+    def _add_unique(self, list_widget: QListWidget, folder: str) -> None:
+        if folder not in self._folders_of(list_widget):
+            list_widget.addItem(folder)
+
+    def _add_nas(self) -> None:
+        folder = QFileDialog.getExistingDirectory(
+            self, "Aggiungi cartella cestino NAS", self.config.last_nas_dir
+        )
         if folder:
-            self.config.pcloud_folder = folder
-            self.pcloud_label.setText(folder)
+            self.config.last_nas_dir = str(Path(folder).parent)
+            self._add_unique(self.nas_list, folder)
+            self.config.nas_folders = self._folders_of(self.nas_list)
+
+    def _add_pcloud(self) -> None:
+        folder = QFileDialog.getExistingDirectory(
+            self, "Aggiungi cartella foto pCloud", self.config.last_pcloud_dir
+        )
+        if folder:
+            self.config.last_pcloud_dir = str(Path(folder).parent)
+            self._add_unique(self.pcloud_list, folder)
+            self.config.pcloud_folders = self._folders_of(self.pcloud_list)
+
+    def _remove_selected(self, list_widget: QListWidget) -> None:
+        for item in list_widget.selectedItems():
+            list_widget.takeItem(list_widget.row(item))
+
+    def _remove_nas(self) -> None:
+        self._remove_selected(self.nas_list)
+        self.config.nas_folders = self._folders_of(self.nas_list)
+
+    def _remove_pcloud(self) -> None:
+        self._remove_selected(self.pcloud_list)
+        self.config.pcloud_folders = self._folders_of(self.pcloud_list)
+
+    def _clear_nas(self) -> None:
+        self.nas_list.clear()
+        self.config.nas_folders = []
+
+    def _clear_pcloud(self) -> None:
+        self.pcloud_list.clear()
+        self.config.pcloud_folders = []
 
     def _start_scan(self) -> None:
-        nas = self.config.nas_folder
-        pcloud = self.config.pcloud_folder
-        if not nas or not Path(nas).is_dir():
-            QMessageBox.warning(self, "PhotoMatch", "Imposta una cartella cestino NAS valida.")
+        nas_folders = [Path(p) for p in self._folders_of(self.nas_list)]
+        pcloud_folders = [Path(p) for p in self._folders_of(self.pcloud_list)]
+        nas_valid = [p for p in nas_folders if p.is_dir()]
+        pcloud_valid = [p for p in pcloud_folders if p.is_dir()]
+        if not nas_valid:
+            QMessageBox.warning(self, "PhotoMatch", "Aggiungi almeno una cartella cestino NAS valida.")
             return
-        if not pcloud or not Path(pcloud).is_dir():
-            QMessageBox.warning(self, "PhotoMatch", "Imposta una cartella pCloud valida.")
+        if not pcloud_valid:
+            QMessageBox.warning(self, "PhotoMatch", "Aggiungi almeno una cartella pCloud valida.")
             return
+        missing = [str(p) for p in nas_folders + pcloud_folders if not p.is_dir()]
+        if missing:
+            QMessageBox.warning(
+                self, "PhotoMatch",
+                "Alcune cartelle non sono raggiungibili e saranno saltate:\n" + "\n".join(missing),
+            )
 
         self.scan_button.setEnabled(False)
         self.export_button.setEnabled(False)
@@ -170,7 +239,7 @@ class MainWindow(QMainWindow):
 
         self._thread = QThread()
         self._worker = ScanWorker(
-            Path(nas), Path(pcloud),
+            nas_valid, pcloud_valid,
             exif_enabled=self.config.exif_enabled,
             size_tolerance=self.config.size_tolerance,
         )
@@ -331,6 +400,28 @@ class MainWindow(QMainWindow):
             )
         else:
             QMessageBox.information(self, "PhotoMatch", "PhotoMatch e' aggiornato.")
+
+    def _show_guide(self) -> None:
+        from photomatch.help_window import GuideWindow
+
+        GuideWindow(self).exec()
+
+    def _first_run_hint(self) -> None:
+        if self.config.help_seen:
+            return
+        box = QMessageBox(self)
+        box.setWindowTitle("PhotoMatch")
+        box.setIcon(QMessageBox.Icon.Information)
+        box.setText(
+            "Benvenuto in PhotoMatch!\n\n"
+            "Aggiungi una o piu' cartelle per lato, poi premi \"Confronta\".\n"
+            "La guida completa e' in Aiuto > Guida (tasto F1)."
+        )
+        dont_show = QCheckBox("Non mostrare piu' questo messaggio")
+        box.setCheckBox(dont_show)
+        box.exec()
+        if dont_show.isChecked():
+            self.config.help_seen = True
 
     def _about(self) -> None:
         QMessageBox.about(

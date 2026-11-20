@@ -21,22 +21,58 @@ class Config:
     def set_window_geometry(self, geometry: bytes) -> None:
         self.settings.setValue("window/geometry", geometry)
 
-    # Percorsi
+    # Cartelle di confronto (liste; migrazione automatica dai vecchi valori singoli)
+    def _folder_list(self, key: str, legacy_key: str) -> list[str]:
+        value = self.settings.value(key, [])
+        if isinstance(value, str):
+            value = [value] if value else []
+        folders = [str(item) for item in value]
+        if not folders:
+            legacy = str(self.settings.value(legacy_key, ""))
+            if legacy:
+                folders = [legacy]
+        return folders
+
     @property
-    def nas_folder(self) -> str:
-        return str(self.settings.value("paths/nas", ""))
+    def nas_folders(self) -> list[str]:
+        return self._folder_list("paths/nas_list", "paths/nas")
 
-    @nas_folder.setter
-    def nas_folder(self, value: str) -> None:
-        self.settings.setValue("paths/nas", value)
+    @nas_folders.setter
+    def nas_folders(self, value: list[str]) -> None:
+        self.settings.setValue("paths/nas_list", [str(item) for item in value])
 
     @property
-    def pcloud_folder(self) -> str:
-        return str(self.settings.value("paths/pcloud", ""))
+    def pcloud_folders(self) -> list[str]:
+        return self._folder_list("paths/pcloud_list", "paths/pcloud")
 
-    @pcloud_folder.setter
-    def pcloud_folder(self, value: str) -> None:
-        self.settings.setValue("paths/pcloud", value)
+    @pcloud_folders.setter
+    def pcloud_folders(self, value: list[str]) -> None:
+        self.settings.setValue("paths/pcloud_list", [str(item) for item in value])
+
+    @property
+    def last_nas_dir(self) -> str:
+        return str(self.settings.value("paths/last_nas_dir", str(Path.home())))
+
+    @last_nas_dir.setter
+    def last_nas_dir(self, value: str) -> None:
+        self.settings.setValue("paths/last_nas_dir", value)
+
+    @property
+    def last_pcloud_dir(self) -> str:
+        return str(self.settings.value("paths/last_pcloud_dir", str(Path.home())))
+
+    @last_pcloud_dir.setter
+    def last_pcloud_dir(self, value: str) -> None:
+        self.settings.setValue("paths/last_pcloud_dir", value)
+
+    @property
+    def help_seen(self) -> bool:
+        value = self.settings.value("prefs/help_seen", False)
+        return bool(value) if not isinstance(value, str) else value.lower() in ("true", "1")
+
+    @help_seen.setter
+    def help_seen(self, value: bool) -> None:
+        self.settings.setValue("prefs/help_seen", value)
 
     # Preferenze
     @property

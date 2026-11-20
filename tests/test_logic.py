@@ -96,3 +96,28 @@ def test_updater_version_tuple():
 
     assert _version_tuple("0.2.0") > _version_tuple("0.1.0")
     assert _version_tuple("1.0") > _version_tuple("0.9.9")
+
+
+def test_scan_photos_multi_dedupes_overlapping_roots(tmp_path):
+    from photomatch.core.logic import scan_photos_multi
+
+    nas = tmp_path / "nas"
+    (nas / "sub").mkdir(parents=True)
+    (nas / "a.jpg").write_bytes(b"x" * 100)
+    (nas / "sub" / "b.jpg").write_bytes(b"y" * 200)
+
+    photos = scan_photos_multi([nas, nas / "sub"], exif_enabled=False)
+    paths = {str(p.path) for p in photos}
+    assert len(photos) == 2  # b.jpg scansionata da entrambe le root, conta una volta
+    assert paths == {str(nas / "a.jpg"), str(nas / "sub" / "b.jpg")}
+
+
+def test_scan_photos_multi_skips_missing_root(tmp_path):
+    from photomatch.core.logic import scan_photos_multi
+
+    root = tmp_path / "root"
+    root.mkdir()
+    (root / "a.jpg").write_bytes(b"x" * 50)
+
+    photos = scan_photos_multi([tmp_path / "non_esiste", root], exif_enabled=False)
+    assert [p.name for p in photos] == ["a.jpg"]

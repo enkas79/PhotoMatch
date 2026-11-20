@@ -5,7 +5,7 @@ a = Analysis(
     ["photomatch/__main__.py"],
     pathex=["."],
     binaries=[],
-    datas=[],
+    datas=[("docs/GUIDA.md", "docs")],
     hiddenimports=["PIL.ExifTags.BaseExif"],
     hookspath=[],
     runtime_hooks=[],
