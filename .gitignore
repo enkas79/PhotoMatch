@@ -8,3 +8,6 @@ venv/
 .idea/
 .pytest_cache/
 assets/screenshot.png
+installer-output/
+dmg-root/
+packaging/deb/build/

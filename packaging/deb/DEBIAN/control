@@ -1,0 +1,10 @@
+Package: photomatch
+Version: __VERSION__
+Section: utils
+Priority: optional
+Architecture: amd64
+Maintainer: enkas79
+Description: Confronta le foto del cestino NAS con quelle su pCloud
+ PhotoMatch confronta le foto presenti nel cestino del NAS con quelle
+ gia' salvate su pCloud in base a nome file, dimensione ed EXIF, elenca
+ le corrispondenze in una tabella ed esporta il report in CSV.

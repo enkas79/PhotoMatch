@@ -1,14 +1,19 @@
 ; Inno Setup script per l'installer di PhotoMatch
-; Compilare con Inno Setup dopo `python -m PyInstaller build.spec`
-; (per exe singolo serve anche l'installer per l'autoupdate)
+; Compilare con Inno Setup dopo `python -m PyInstaller build.spec`.
+; La versione si puo' passare da riga di comando (usato dalla CI):
+;   ISCC.exe /DMyAppVersion=0.3.0 installer.iss
+
+#ifndef MyAppVersion
+  #define MyAppVersion "0.2.0"
+#endif
 
 [Setup]
 AppName=PhotoMatch
-AppVersion=0.2.0
+AppVersion={#MyAppVersion}
 AppPublisher=enkas79
 DefaultDirName={autopf}\PhotoMatch
 DefaultGroupName=PhotoMatch
-OutputBaseFilename=PhotoMatch-0.2.0-setup
+OutputBaseFilename=PhotoMatch-{#MyAppVersion}-setup
 Compression=lzma2
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64compatible

@@ -1,0 +1,120 @@
+name: Build Installers
+
+# Si attiva quando version.txt cambia su main: costruisce installer
+# Windows (.exe via Inno Setup), macOS (.dmg) e Debian/Ubuntu (.deb)
+# e li allega a una GitHub Release taggata vX.Y.Z.
+# L'updater in-app (photomatch/core/updater.py) legge queste release.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - version.txt
+      - build.spec
+      - installer.iss
+      - packaging/**
+      - .github/workflows/build-installers.yml
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: read
+        run: echo "version=$(tr -d '[:space:]' < version.txt)" >> "$GITHUB_OUTPUT"
+
+  build-windows:
+    needs: version
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt pyinstaller
+      # build.spec genera dist\PhotoMatch.exe (onefile, windowed)
+      - run: pyinstaller --noconfirm build.spec
+      - name: Install Inno Setup
+        run: |
+          choco install innosetup -y
+          echo "C:\Program Files (x86)\Inno Setup 6" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Build installer
+        run: ISCC.exe /DMyAppVersion=${{ needs.version.outputs.version }} /Oinstaller-output installer.iss
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: installer-output/PhotoMatch-${{ needs.version.outputs.version }}-setup.exe
+
+  build-macos:
+    needs: version
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt pyinstaller
+      - run: pyinstaller --noconfirm build.spec
+      - name: Build dmg
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          mkdir -p dmg-root
+          cp dist/PhotoMatch dmg-root/
+          ln -s /Applications dmg-root/Applications
+          hdiutil create -volname "PhotoMatch" -srcfolder dmg-root -ov -format UDZO \
+            "PhotoMatch-${VERSION}.dmg"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-installer
+          path: PhotoMatch-${{ needs.version.outputs.version }}.dmg
+
+  build-deb:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt pyinstaller
+      - run: pyinstaller --noconfirm build.spec
+      - name: Assemble .deb tree
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          PKG_DIR=packaging/deb/build
+          rm -rf "$PKG_DIR"
+          mkdir -p "$PKG_DIR/DEBIAN" "$PKG_DIR/usr/bin" "$PKG_DIR/usr/share/applications"
+          sed "s/__VERSION__/$VERSION/" packaging/deb/DEBIAN/control > "$PKG_DIR/DEBIAN/control"
+          cp dist/PhotoMatch "$PKG_DIR/usr/bin/photomatch"
+          chmod 755 "$PKG_DIR/usr/bin/photomatch"
+          cp packaging/deb/usr/share/applications/photomatch.desktop "$PKG_DIR/usr/share/applications/"
+          dpkg-deb --build --root-owner-group "$PKG_DIR" "photomatch_${VERSION}_amd64.deb"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb
+          path: photomatch_${{ needs.version.outputs.version }}_amd64.deb
+
+  release:
+    needs: [version, build-windows, build-macos, build-deb]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.version.outputs.version }}
+          name: PhotoMatch v${{ needs.version.outputs.version }}
+          generate_release_notes: true
+          files: |
+            artifacts/windows-installer/*
+            artifacts/macos-installer/*
+            artifacts/linux-deb/*
